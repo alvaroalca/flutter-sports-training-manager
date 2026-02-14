@@ -1,0 +1,286 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isCodeString(value) {
+      // Formato esperado: #000001
+      return value is string && value.matches('^#\\d{6}$');
+    }
+
+    // ─────────────────────────────────────────────
+    // Usuarios
+    // ─────────────────────────────────────────────
+    match /usuarios/{uid} {
+      allow read: if signedIn();
+
+      allow create: if isOwner(uid);
+
+      // El usuario puede actualizar su propio perfil.
+      // Permitimos asignar `codigoUsuario` solo si antes no existía y cumple formato.
+      allow update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'nombre',
+          'apellidos',
+          'email',
+          'fechaCreacion',
+          'fotoPerfil',
+          'codigoUsuario'
+        ])
+        && (
+          // Si no toca el código, ok
+          !(request.resource.data.keys().hasAny(['codigoUsuario']))
+          ||
+          (
+            resource.data.codigoUsuario == null
+            && isCodeString(request.resource.data.codigoUsuario)
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Contadores (códigos)
+    //
+    // Se usan para generar códigos correlativos (#000001) con transacciones.
+    // Se limita la escritura para que solo se permitan incrementos de +1.
+    // ─────────────────────────────────────────────
+    match /contadores/codigos {
+      allow read: if signedIn();
+
+      allow create: if false;
+
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly(['ultimoUsuario', 'ultimoGrupo'])
+        && (
+          // Permite incrementar usuario en +1
+          (
+            request.resource.data.ultimoUsuario is int
+            && (resource.data.ultimoUsuario is int || resource.data.ultimoUsuario == null)
+            && request.resource.data.ultimoUsuario == ((resource.data.ultimoUsuario ?? 0) + 1)
+            && request.resource.data.ultimoGrupo == (resource.data.ultimoGrupo ?? 0)
+          )
+          ||
+          // Permite incrementar grupo en +1
+          (
+            request.resource.data.ultimoGrupo is int
+            && (resource.data.ultimoGrupo is int || resource.data.ultimoGrupo == null)
+            && request.resource.data.ultimoGrupo == ((resource.data.ultimoGrupo ?? 0) + 1)
+            && request.resource.data.ultimoUsuario == (resource.data.ultimoUsuario ?? 0)
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Grupos
+    // ─────────────────────────────────────────────
+    match /grupos/{grupoId} {
+      // Lectura abierta a usuarios autenticados para permitir buscar por código
+      // antes de entrar al grupo.
+      allow read: if signedIn();
+
+      // Crear grupo: solo el entrenador creador.
+      // El código del grupo se asigna en una operación posterior.
+      allow create: if signedIn()
+        && request.resource.data.entrenadorId == request.auth.uid
+        && request.resource.data.codigoGrupo == ''
+        && request.resource.data.miembrosIds is list;
+
+      // Actualizar: solo el entrenador dueño.
+      // Se permite asignar `codigoGrupo` si antes estaba vacío y cumple formato.
+      allow update: if signedIn()
+        && resource.data.entrenadorId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'nombre',
+          'descripcion',
+          'entrenadorId',
+          'codigoGrupo',
+          'fechaCreacion',
+          'miembrosIds'
+        ])
+        && request.resource.data.entrenadorId == resource.data.entrenadorId
+        && (
+          // Si no cambia el código, ok
+          request.resource.data.codigoGrupo == resource.data.codigoGrupo
+          ||
+          (
+            resource.data.codigoGrupo == ''
+            && isCodeString(request.resource.data.codigoGrupo)
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Solicitudes de ingreso
+    // ─────────────────────────────────────────────
+    match /solicitudes/{solicitudId} {
+      // Lectura: atleta (sus solicitudes) o entrenador dueño del grupo.
+      allow read: if signedIn() && (
+        resource.data.atletaId == request.auth.uid
+        || get(/databases/$(database)/documents/grupos/$(resource.data.grupoId)).data.entrenadorId == request.auth.uid
+      );
+
+      // Crear: solo el atleta, siempre como pendiente y sin resolución.
+      allow create: if signedIn()
+        && request.resource.data.atletaId == request.auth.uid
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.fechaResolucion == null
+        // El grupo debe existir
+        && exists(/databases/$(database)/documents/grupos/$(request.resource.data.grupoId))
+        // y el atleta no debe ser ya miembro
+        && !get(/databases/$(database)/documents/grupos/$(request.resource.data.grupoId)).data.miembrosIds.hasAny([request.auth.uid]);
+
+      // Resolver: solo el entrenador dueño del grupo (aprobada/rechazada).
+      allow update: if signedIn()
+        && get(/databases/$(database)/documents/grupos/$(resource.data.grupoId)).data.entrenadorId == request.auth.uid
+        && request.resource.data.grupoId == resource.data.grupoId
+        && request.resource.data.atletaId == resource.data.atletaId
+        && request.resource.data.fechaSolicitud == resource.data.fechaSolicitud
+        && request.resource.data.keys().hasOnly([
+          'grupoId',
+          'atletaId',
+          'estado',
+          'fechaSolicitud',
+          'fechaResolucion'
+        ])
+        && resource.data.estado == 'pendiente'
+        && request.resource.data.estado in ['aprobada', 'rechazada']
+        && request.resource.data.fechaResolucion is timestamp;
+
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Atletas
+    // ─────────────────────────────────────────────
+    match /atletas/{atletaId} {
+      // Lectura: atleta o entrenador asignado.
+      allow read: if signedIn()
+        && (request.auth.uid == atletaId || resource.data.entrenadorId == request.auth.uid);
+
+      // Escritura: atleta o entrenador asignado.
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'entrenadorId',
+          'categoria',
+          'modalidad',
+          'licenciaFederativa',
+          'fechaVinculacion'
+        ])
+        && (request.auth.uid == atletaId || request.auth.uid == request.resource.data.entrenadorId);
+
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Ejercicios
+    // ─────────────────────────────────────────────
+    match /ejercicios/{ejercicioId} {
+      allow read: if signedIn();
+      // En este modelo los ejercicios no guardan propietario; por simplicidad
+      // se permite escritura a usuarios autenticados.
+      allow create, update, delete: if signedIn();
+    }
+
+    // ─────────────────────────────────────────────
+    // Entrenamientos
+    // ─────────────────────────────────────────────
+    match /entrenamientos/{entrenamientoId} {
+      // Lectura: entrenador creador o atleta asignado.
+      allow read: if signedIn()
+        && (
+          resource.data.entrenadorId == request.auth.uid
+          || resource.data.atletaId == request.auth.uid
+        );
+
+      // Crear: solo el entrenador que lo crea.
+      allow create: if signedIn()
+        && request.resource.data.entrenadorId == request.auth.uid;
+
+      // Update:
+      // - entrenador: puede editar sus entrenamientos
+      // - atleta asignado: solo puede cambiar `estado`
+      allow update: if signedIn() && (
+        (
+          resource.data.entrenadorId == request.auth.uid
+          && request.resource.data.entrenadorId == resource.data.entrenadorId
+        )
+        ||
+        (
+          resource.data.atletaId == request.auth.uid
+          && request.resource.data.entrenadorId == resource.data.entrenadorId
+          && request.resource.data.atletaId == resource.data.atletaId
+          && request.resource.data.nombre == resource.data.nombre
+          && request.resource.data.descripcion == resource.data.descripcion
+          && request.resource.data.ejerciciosIds == resource.data.ejerciciosIds
+          && request.resource.data.fechaCreacion == resource.data.fechaCreacion
+          && request.resource.data.fechaProgramada == resource.data.fechaProgramada
+        )
+      );
+
+      allow delete: if signedIn() && resource.data.entrenadorId == request.auth.uid;
+    }
+
+    // ─────────────────────────────────────────────
+    // Resultados
+    // ─────────────────────────────────────────────
+    match /resultados/{resultadoId} {
+      // Lectura:
+      // - el propio atleta
+      // - el entrenador vinculado en /atletas/{atletaId}.entrenadorId
+      allow read: if signedIn()
+        && (
+          resource.data.atletaId == request.auth.uid
+          || (
+            exists(/databases/$(database)/documents/atletas/$(resource.data.atletaId))
+            && get(/databases/$(database)/documents/atletas/$(resource.data.atletaId)).data.entrenadorId == request.auth.uid
+          )
+        );
+
+      // Crear: solo el atleta que registra el resultado
+      allow create: if signedIn()
+        && request.resource.data.atletaId == request.auth.uid;
+
+      // Update: atleta o entrenador (para observaciones).
+      allow update: if signedIn()
+        && (
+          request.auth.uid == resource.data.atletaId
+          || (
+            exists(/databases/$(database)/documents/atletas/$(resource.data.atletaId))
+            && get(/databases/$(database)/documents/atletas/$(resource.data.atletaId)).data.entrenadorId == request.auth.uid
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Recursos (biblioteca)
+    // ─────────────────────────────────────────────
+    match /recursos/{recursoId} {
+      allow read: if signedIn();
+      // La app crea contenido inicial desde cliente; se permite create a autenticados.
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // Deny por defecto
+    // ─────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

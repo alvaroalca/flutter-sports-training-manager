@@ -1,0 +1,19 @@
+{
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "tiro-olimpico-trainer",
+          "configurations": {
+            "android": "1:425274545710:android:225c68a0832969724531bf",
+            "ios": "1:425274545710:ios:35fbe5bc205f7c7b4531bf"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}
