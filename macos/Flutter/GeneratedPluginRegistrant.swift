@@ -1,5 +1,13 @@
 //
-//  Generated file. Do not edit.
+//  ARCHIVO AUTOGENERADO — no editar manualmente.
+//
+//  Generado por: Flutter tool al ejecutar `flutter pub get` o `flutter build`.
+//  Cuándo se regenera: al añadir o eliminar plugins con soporte macOS en pubspec.yaml.
+//
+//  Por qué existe:
+//    Equivalente Swift del registrador de plugins de iOS, pero para macOS.
+//    Registra: cloud_firestore, firebase_auth, firebase_core, firebase_storage
+//    y file_selector_macos (selector de archivos nativo del sistema operativo).
 //
 
 import FlutterMacOS

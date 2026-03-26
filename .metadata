@@ -1,7 +1,18 @@
-# This file tracks properties of this Flutter project.
-# Used by Flutter tool to assess capabilities and perform upgrades etc.
+# ARCHIVO AUTOGENERADO — no editar manualmente (salvo la sección `unmanaged_files`).
 #
-# This file should be version controlled and should not be manually edited.
+# Generado por: Flutter CLI al crear el proyecto (`flutter create`).
+# Cuándo se actualiza: automáticamente mediante `flutter migrate`.
+#
+# Por qué existe:
+#   Permite al comando `flutter migrate` saber desde qué revisión de Flutter se
+#   creó el proyecto y qué base se usó para cada plataforma. Con esa información,
+#   la herramienta puede aplicar actualizaciones de plantilla de forma incremental
+#   sin sobreescribir código personalizado.
+#
+#   La sección `unmanaged_files` lista los archivos que se excluyen de migraciones
+#   automáticas porque contienen código propio (main.dart y el proyecto Xcode).
+#
+# Se debe versionar: sí.
 
 version:
   revision: "90673a4eef275d1a6692c26ac80d6d746d41a73a"
