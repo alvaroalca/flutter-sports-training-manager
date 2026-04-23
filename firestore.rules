@@ -64,16 +64,16 @@ service cloud.firestore {
           (
             request.resource.data.ultimoUsuario is int
             && (resource.data.ultimoUsuario is int || resource.data.ultimoUsuario == null)
-            && request.resource.data.ultimoUsuario == ((resource.data.ultimoUsuario ?? 0) + 1)
-            && request.resource.data.ultimoGrupo == (resource.data.ultimoGrupo ?? 0)
+            && request.resource.data.ultimoUsuario == (((resource.data.ultimoUsuario == null) ? 0 : resource.data.ultimoUsuario) + 1)
+            && request.resource.data.ultimoGrupo == ((resource.data.ultimoGrupo == null) ? 0 : resource.data.ultimoGrupo)
           )
           ||
           // Permite incrementar grupo en +1
           (
             request.resource.data.ultimoGrupo is int
             && (resource.data.ultimoGrupo is int || resource.data.ultimoGrupo == null)
-            && request.resource.data.ultimoGrupo == ((resource.data.ultimoGrupo ?? 0) + 1)
-            && request.resource.data.ultimoUsuario == (resource.data.ultimoUsuario ?? 0)
+            && request.resource.data.ultimoGrupo == (((resource.data.ultimoGrupo == null) ? 0 : resource.data.ultimoGrupo) + 1)
+            && request.resource.data.ultimoUsuario == ((resource.data.ultimoUsuario == null) ? 0 : resource.data.ultimoUsuario)
           )
         );
 
