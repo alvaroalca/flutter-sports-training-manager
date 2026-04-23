@@ -46,10 +46,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -64,18 +61,32 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAUmcPNf_vOJBfggSrys_Klegxkt9oya2g',
-    appId: '1:425274545710:android:225c68a0832969724531bf',
+    appId: '1:425274545710:android:82a287acb19f7d544531bf',
     messagingSenderId: '425274545710',
     projectId: 'tiro-olimpico-trainer',
+    databaseURL: 'https://tiro-olimpico-trainer-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'tiro-olimpico-trainer.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAMi5hozPoTzDkUdaXF4zilrp9v2__MecQ',
-    appId: '1:425274545710:ios:35fbe5bc205f7c7b4531bf',
+    appId: '1:425274545710:ios:6719bc40af3922e84531bf',
     messagingSenderId: '425274545710',
     projectId: 'tiro-olimpico-trainer',
+    databaseURL: 'https://tiro-olimpico-trainer-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'tiro-olimpico-trainer.firebasestorage.app',
-    iosBundleId: 'com.alvaroalcaraz.tiroolimpico',
+    iosBundleId: 'com.example.tfg',
   );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyDHl3rggC0SCkrxqKldHROvzg6fCdh6IGM',
+    appId: '1:425274545710:web:531f098f62dc33fb4531bf',
+    messagingSenderId: '425274545710',
+    projectId: 'tiro-olimpico-trainer',
+    authDomain: 'tiro-olimpico-trainer.firebaseapp.com',
+    databaseURL: 'https://tiro-olimpico-trainer-default-rtdb.europe-west1.firebasedatabase.app',
+    storageBucket: 'tiro-olimpico-trainer.firebasestorage.app',
+    measurementId: 'G-D5XHDX4QK8',
+  );
+
 }
