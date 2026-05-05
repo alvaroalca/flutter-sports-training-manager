@@ -8,10 +8,15 @@
 ///   - Posibilidad de expandir cada resultado para ver el detalle por series
 ///     y añadir/editar observaciones del entrenador.
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:tfg/controllers/auth_controller.dart';
 import 'package:tfg/controllers/coach_controller.dart';
+import 'package:tfg/controllers/entrenamiento_controller.dart';
+import 'package:tfg/core/constants/app_routes.dart';
 import 'package:tfg/core/theme/app_colors.dart';
 import 'package:tfg/core/theme/app_text_styles.dart';
+import 'package:tfg/models/entrenamiento.dart';
 import 'package:tfg/models/resultado.dart';
 import 'package:tfg/shared/widgets/app_scaffold.dart';
 
@@ -188,6 +193,10 @@ class _CuerpoAtleta extends StatelessWidget {
             children: [
               // ── Estadísticas globales ──────────────
               _TarjetaEstadisticas(resultados: resultados),
+              const SizedBox(height: 20),
+
+              // ── Entrenamientos asignados ──────────
+              _SeccionAsignados(atletaId: atletaId),
               const SizedBox(height: 20),
 
               // ── Historial ─────────────────────────
@@ -492,6 +501,153 @@ class _ChipDisparo extends StatelessWidget {
       child: Text(
         puntuacion.toStringAsFixed(1),
         style: AppTextStyles.chipLabel.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sección de entrenamientos asignados al atleta por este entrenador
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Muestra los entrenamientos que el entrenador autenticado ha asignado al atleta,
+/// con un resumen por estado y la lista de los más recientes.
+class _SeccionAsignados extends StatelessWidget {
+  final String atletaId;
+  const _SeccionAsignados({required this.atletaId});
+
+  @override
+  Widget build(BuildContext context) {
+    final entrenadorId = context.read<AuthController>().usuario!.uid;
+    final ctrl = context.read<EntrenamientoController>();
+
+    return StreamBuilder<List<Entrenamiento>>(
+      stream: ctrl.entrenamientosAsignadosAAtletaPorEntrenador(
+        entrenadorId: entrenadorId,
+        atletaId: atletaId,
+      ),
+      builder: (context, snapshot) {
+        final lista = snapshot.data ?? [];
+        final pendientes = lista
+            .where((e) => e.estado == EstadoEntrenamiento.pendiente)
+            .length;
+        final enProgreso = lista
+            .where((e) => e.estado == EstadoEntrenamiento.enProgreso)
+            .length;
+        final completados = lista
+            .where((e) => e.estado == EstadoEntrenamiento.completado)
+            .length;
+
+        // Orden: pendientes primero, luego en progreso, luego completados
+        final ordenados = [...lista]..sort((a, b) {
+            int prioridad(EstadoEntrenamiento e) => switch (e) {
+                  EstadoEntrenamiento.pendiente => 0,
+                  EstadoEntrenamiento.enProgreso => 1,
+                  EstadoEntrenamiento.completado => 2,
+                };
+            return prioridad(a.estado).compareTo(prioridad(b.estado));
+          });
+        final visibles = ordenados.take(8).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Entrenamientos asignados',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                _ChipEstado(
+                    color: AppColors.textSecondary,
+                    label: '$pendientes pendientes'),
+                _ChipEstado(
+                    color: AppColors.warning,
+                    label: '$enProgreso en progreso'),
+                _ChipEstado(
+                    color: AppColors.success,
+                    label: '$completados completados'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (lista.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'Aún no le has asignado ningún entrenamiento.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              )
+            else
+              ...visibles.map((e) => _FilaAsignado(entrenamiento: e)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Chip que resume el contador de entrenamientos por estado.
+class _ChipEstado extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _ChipEstado({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              color: color, fontSize: 12, fontWeight: FontWeight.w500)),
+    );
+  }
+}
+
+/// Fila compacta de un entrenamiento asignado, navegable al detalle.
+class _FilaAsignado extends StatelessWidget {
+  final Entrenamiento entrenamiento;
+  const _FilaAsignado({required this.entrenamiento});
+
+  (Color, IconData, String) _meta() {
+    switch (entrenamiento.estado) {
+      case EstadoEntrenamiento.completado:
+        return (AppColors.success, Icons.check_circle, 'Completado');
+      case EstadoEntrenamiento.enProgreso:
+        return (AppColors.warning, Icons.play_circle, 'En progreso');
+      case EstadoEntrenamiento.pendiente:
+        return (AppColors.textSecondary, Icons.schedule, 'Pendiente');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, icon, label) = _meta();
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: ListTile(
+        dense: true,
+        leading: Icon(icon, color: color),
+        title: Text(entrenamiento.nombre,
+            style: const TextStyle(fontWeight: FontWeight.w500)),
+        subtitle: Text(label, style: TextStyle(color: color, fontSize: 12)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push(
+          AppRoutes.detalleEntrenamiento
+              .replaceFirst(':id', entrenamiento.id),
+        ),
       ),
     );
   }

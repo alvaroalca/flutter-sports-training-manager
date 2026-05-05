@@ -98,6 +98,38 @@ class CoachController extends ChangeNotifier {
     }
   }
 
+  /// Vincula un atleta al entrenador indicado usando el código de usuario del atleta.
+  ///
+  /// [atletasActualesUids] es la lista de UIDs ya vinculados, cargada desde el
+  /// stream del panel (evita leer atletas/{uid} para los que aún no hay permiso).
+  /// Devuelve null si la operación fue exitosa, o un mensaje de error/info.
+  Future<String?> agregarAtletaPorCodigo({
+    required String codigoAtleta,
+    required String entrenadorId,
+    required List<String> atletasActualesUids,
+  }) async {
+    _clearError();
+    try {
+      final usuario = await _firestoreService
+          .buscarUsuarioPorCodigo(codigoAtleta.trim().toUpperCase());
+      if (usuario == null) return 'No existe ningún usuario con ese código.';
+      if (usuario.uid == entrenadorId) return 'No puedes agregarte a ti mismo.';
+      if (atletasActualesUids.contains(usuario.uid)) {
+        return '${usuario.nombreCompleto} ya es uno de tus atletas.';
+      }
+
+      await _firestoreService.vincularEntrenador(
+        atletaUid: usuario.uid,
+        entrenadorId: entrenadorId,
+        categoria: 'General',
+        modalidad: 'Pistola 10m',
+      );
+      return null;
+    } catch (e) {
+      return 'Error al agregar atleta: ${e.toString()}';
+    }
+  }
+
   /// Añade o actualiza las observaciones del entrenador en un resultado.
   ///
   /// Devuelve true si la operación tuvo éxito.

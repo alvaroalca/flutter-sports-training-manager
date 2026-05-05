@@ -36,6 +36,16 @@ class EntrenamientoController extends ChangeNotifier {
   Stream<List<Entrenamiento>> plantillasPorEntrenador(String entrenadorId) =>
       _firestoreService.plantillasPorEntrenador(entrenadorId);
 
+  /// Stream con los entrenamientos que un entrenador ha asignado a un atleta.
+  Stream<List<Entrenamiento>> entrenamientosAsignadosAAtletaPorEntrenador({
+    required String entrenadorId,
+    required String atletaId,
+  }) =>
+      _firestoreService.entrenamientosAsignadosAAtletaPorEntrenador(
+        entrenadorId: entrenadorId,
+        atletaId: atletaId,
+      );
+
   // ─────────────────────────────────────────────
   // OPERACIONES DE ESCRITURA
   // ─────────────────────────────────────────────
@@ -70,6 +80,33 @@ class EntrenamientoController extends ChangeNotifier {
       return id;
     } catch (_) {
       _errorMessage = 'No se pudo crear el entrenamiento. Inténtalo de nuevo.';
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Asigna las [plantillas] indicadas a cada uno de los [atletasIds].
+  ///
+  /// Crea una copia del entrenamiento por cada par (plantilla, atleta).
+  /// Devuelve el número total de asignaciones creadas, o null si falla.
+  Future<int?> asignarPlantillasAGrupo({
+    required List<Entrenamiento> plantillas,
+    required List<String> atletasIds,
+  }) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      var total = 0;
+      for (final p in plantillas) {
+        total += await _firestoreService.asignarPlantillaAAtletas(
+          plantilla: p,
+          atletasIds: atletasIds,
+        );
+      }
+      return total;
+    } catch (e) {
+      _errorMessage = 'Error al asignar entrenamientos: ${e.toString()}';
       return null;
     } finally {
       _setLoading(false);

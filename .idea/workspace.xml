@@ -5,11 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0c3c8f6d-e35f-4c40-8f05-e33a5337aadd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/android/settings.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/firebase.json" beforeDir="false" afterPath="$PROJECT_DIR$/firebase.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/firebase_options.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/firebase_options.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/firestore.rules" beforeDir="false" afterPath="$PROJECT_DIR$/firestore.rules" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/controllers/auth_controller.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/controllers/auth_controller.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/controllers/biblioteca_controller.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/controllers/biblioteca_controller.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/controllers/coach_controller.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/controllers/coach_controller.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/controllers/entrenamiento_controller.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/controllers/entrenamiento_controller.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/controllers/grupos_controller.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/controllers/grupos_controller.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/services/firestore_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/firestore_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/shared/widgets/app_scaffold.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/shared/widgets/app_scaffold.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/coach/panel_entrenador_view.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/coach/panel_entrenador_view.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/coach/perfil_atleta_view.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/coach/perfil_atleta_view.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/dashboard/dashboard_view.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/dashboard/dashboard_view.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/grupos/detalle_grupo_view.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/grupos/detalle_grupo_view.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/profile/perfil_view.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/profile/perfil_view.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/tracking/tracking_view.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/tracking/tracking_view.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/views/training/detalle_entrenamiento_view.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/views/training/detalle_entrenamiento_view.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

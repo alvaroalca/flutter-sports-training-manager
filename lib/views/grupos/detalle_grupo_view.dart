@@ -11,8 +11,11 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:tfg/controllers/auth_controller.dart';
+import 'package:tfg/controllers/entrenamiento_controller.dart';
 import 'package:tfg/controllers/grupos_controller.dart';
 import 'package:tfg/core/theme/app_colors.dart';
+import 'package:tfg/models/entrenamiento.dart';
 import 'package:tfg/models/grupo.dart';
 import 'package:tfg/models/solicitud_grupo.dart';
 import 'package:tfg/models/usuario.dart';
@@ -99,6 +102,139 @@ class _DetalleGrupoViewState extends State<DetalleGrupoView> {
         ),
       );
     }
+  }
+
+  /// Diálogo para asignar plantillas (entrenamientos) a todos los miembros del grupo.
+  Future<void> _mostrarDialogoAsignarEntrenamientos(Grupo grupo) async {
+    if (grupo.miembrosIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El grupo no tiene miembros todavía.'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    final entrenadorId = context.read<AuthController>().usuario!.uid;
+    final entrenamientoCtrl = context.read<EntrenamientoController>();
+    final selecionadas = <String>{};
+    var ultimoSnapshot = <Entrenamiento>[];
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) => AlertDialog(
+          title: const Text('Asignar entrenamientos'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: StreamBuilder<List<Entrenamiento>>(
+              stream:
+                  entrenamientoCtrl.plantillasPorEntrenador(entrenadorId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 100,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final plantillas = snapshot.data ?? [];
+                ultimoSnapshot = plantillas;
+                if (plantillas.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'No tienes plantillas todavía. Créalas primero en "Mis plantillas".',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  );
+                }
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Se asignará a los ${grupo.miembrosIds.length} miembros del grupo.',
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: plantillas.length,
+                        itemBuilder: (_, i) {
+                          final p = plantillas[i];
+                          final marcada = selecionadas.contains(p.id);
+                          return CheckboxListTile(
+                            title: Text(p.nombre,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w500)),
+                            subtitle: Text(
+                              '${p.ejerciciosIds.length} ejercicios',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            value: marcada,
+                            onChanged: (v) {
+                              setStateDialog(() {
+                                if (v == true) {
+                                  selecionadas.add(p.id);
+                                } else {
+                                  selecionadas.remove(p.id);
+                                }
+                              });
+                            },
+                            controlAffinity:
+                                ListTileControlAffinity.leading,
+                            dense: true,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: selecionadas.isEmpty
+                  ? null
+                  : () => Navigator.of(ctx).pop(true),
+              child: Text('Asignar (${selecionadas.length})'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    final plantillasSeleccionadas = ultimoSnapshot
+        .where((p) => selecionadas.contains(p.id))
+        .toList();
+    if (plantillasSeleccionadas.isEmpty) return;
+
+    final total = await entrenamientoCtrl.asignarPlantillasAGrupo(
+      plantillas: plantillasSeleccionadas,
+      atletasIds: grupo.miembrosIds,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(total != null
+          ? 'Asignados $total entrenamientos.'
+          : 'Error al asignar entrenamientos.'),
+      backgroundColor: total != null ? AppColors.success : AppColors.error,
+    ));
   }
 
   void _mostrarDialogoAnadirAtleta() {
@@ -235,6 +371,11 @@ class _DetalleGrupoViewState extends State<DetalleGrupoView> {
               icon: const Icon(Icons.person_add_outlined),
               tooltip: 'Añadir atleta',
               onPressed: _mostrarDialogoAnadirAtleta,
+            ),
+            IconButton(
+              icon: const Icon(Icons.fitness_center),
+              tooltip: 'Asignar entrenamientos',
+              onPressed: () => _mostrarDialogoAsignarEntrenamientos(grupo),
             ),
           ],
           bottom: const TabBar(

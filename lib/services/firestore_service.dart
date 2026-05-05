@@ -215,6 +215,54 @@ class FirestoreService {
         .update({'estado': estado.name});
   }
 
+  /// Crea una asignación nueva de la [plantilla] para cada uno de los [atletasIds].
+  ///
+  /// Cada documento generado es una copia con [atletaId] específico y estado pendiente.
+  /// Devuelve el número de asignaciones creadas.
+  Future<int> asignarPlantillaAAtletas({
+    required Entrenamiento plantilla,
+    required List<String> atletasIds,
+  }) async {
+    if (atletasIds.isEmpty) return 0;
+    final batch = _db.batch();
+    final ahora = Timestamp.fromDate(DateTime.now());
+    for (final atletaId in atletasIds) {
+      final ref = _db.collection('entrenamientos').doc();
+      batch.set(ref, {
+        'nombre': plantilla.nombre,
+        'descripcion': plantilla.descripcion,
+        'entrenadorId': plantilla.entrenadorId,
+        'atletaId': atletaId,
+        'ejerciciosIds': plantilla.ejerciciosIds,
+        'fechaCreacion': ahora,
+        'fechaProgramada': plantilla.fechaProgramada != null
+            ? Timestamp.fromDate(plantilla.fechaProgramada!)
+            : null,
+        'estado': EstadoEntrenamiento.pendiente.name,
+      });
+    }
+    await batch.commit();
+    return atletasIds.length;
+  }
+
+  /// Stream de los entrenamientos que un entrenador ha asignado a un atleta concreto.
+  ///
+  /// Filtra por entrenadorId en Firestore (regla satisfecha) y por atletaId en memoria
+  /// para evitar índices compuestos.
+  Stream<List<Entrenamiento>> entrenamientosAsignadosAAtletaPorEntrenador({
+    required String entrenadorId,
+    required String atletaId,
+  }) {
+    return _db
+        .collection('entrenamientos')
+        .where('entrenadorId', isEqualTo: entrenadorId)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => Entrenamiento.fromMap(d.data(), d.id))
+            .where((e) => e.atletaId == atletaId)
+            .toList());
+  }
+
   // ─────────────────────────────────────────────
   // RESULTADOS
   // ─────────────────────────────────────────────
@@ -277,14 +325,20 @@ class FirestoreService {
   }
 
   /// Stream con los recursos filtrados por categoría.
+  ///
+  /// El ordenado se aplica en memoria para evitar el índice compuesto
+  /// (categoria + fechaPublicacion) que requeriría un índice manual en Firestore.
   Stream<List<Recurso>> recursosPorCategoria(CategoriaRecurso categoria) {
     return _db
         .collection('recursos')
         .where('categoria', isEqualTo: categoria.name)
-        .orderBy('fechaPublicacion', descending: true)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => Recurso.fromMap(d.data(), d.id)).toList());
+        .map((snap) {
+      final lista =
+          snap.docs.map((d) => Recurso.fromMap(d.data(), d.id)).toList();
+      lista.sort((a, b) => b.fechaPublicacion.compareTo(a.fechaPublicacion));
+      return lista;
+    });
   }
 
   /// Crea un nuevo recurso en la colección 'recursos'.
@@ -411,16 +465,20 @@ class FirestoreService {
   }
 
   /// Comprueba si ya existe una solicitud pendiente de un atleta para un grupo.
+  ///
+  /// Usa un único filtro (atletaId) para evitar índices compuestos. Los filtros
+  /// de grupoId y estado se aplican en memoria sobre los resultados.
   Future<bool> tieneSolicitudPendiente(
       String grupoId, String atletaId) async {
     final snap = await _db
         .collection('solicitudes')
-        .where('grupoId', isEqualTo: grupoId)
         .where('atletaId', isEqualTo: atletaId)
-        .where('estado', isEqualTo: EstadoSolicitud.pendiente.name)
-        .limit(1)
         .get();
-    return snap.docs.isNotEmpty;
+    return snap.docs.any(
+      (d) =>
+          d.data()['grupoId'] == grupoId &&
+          d.data()['estado'] == EstadoSolicitud.pendiente.name,
+    );
   }
 
   /// Resuelve (aprueba o rechaza) una solicitud de ingreso.
@@ -448,5 +506,29 @@ class FirestoreService {
     }
 
     await batch.commit();
+  }
+
+  // ─────────────────────────────────────────────
+  // VINCULACIÓN ATLETA ↔ ENTRENADOR
+  // ─────────────────────────────────────────────
+
+  /// Crea o actualiza el documento de atleta vinculando al entrenador indicado.
+  ///
+  /// Usa merge para preservar [licenciaFederativa] si ya existía.
+  Future<void> vincularEntrenador({
+    required String atletaUid,
+    required String entrenadorId,
+    required String categoria,
+    required String modalidad,
+  }) async {
+    await _db.collection('atletas').doc(atletaUid).set(
+      {
+        'entrenadorId': entrenadorId,
+        'categoria': categoria,
+        'modalidad': modalidad,
+        'fechaVinculacion': Timestamp.fromDate(DateTime.now()),
+      },
+      SetOptions(merge: true),
+    );
   }
 }

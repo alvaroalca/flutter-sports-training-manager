@@ -128,26 +128,64 @@ class _DetalleEntrenamientoViewState extends State<DetalleEntrenamientoView> {
                 ),
               ),
 
-          // ── Botón Iniciar (solo para atleta con ejercicios) ──
-          if (esAtleta && _ejercicios.isNotEmpty) ...[
+          // ── Acciones del atleta ──────────────────────
+          if (esAtleta) ...[
             const SizedBox(height: 16),
-            SafeArea(
-              child: ElevatedButton.icon(
-                onPressed: () => context.push(
-                  AppRoutes.tracking.replaceFirst(
-                      ':id', entrenamiento.id),
+            if (entrenamiento.estado == EstadoEntrenamiento.completado)
+              SafeArea(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.success),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, color: AppColors.success),
+                      SizedBox(width: 8),
+                      Text('Entrenamiento completado',
+                          style: TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Iniciar entrenamiento'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.textOnPrimary,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              )
+            else ...[
+              if (_ejercicios.isNotEmpty)
+                ElevatedButton.icon(
+                  onPressed: () => context.push(
+                    AppRoutes.tracking
+                        .replaceFirst(':id', entrenamiento.id),
+                  ),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Iniciar entrenamiento'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.textOnPrimary,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              SafeArea(
+                child: OutlinedButton.icon(
+                  onPressed: _marcarComoTerminado,
+                  icon: const Icon(Icons.check),
+                  label: const Text('Marcar como terminado'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.success,
+                    side: const BorderSide(color: AppColors.success),
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ],
       ),
@@ -156,6 +194,59 @@ class _DetalleEntrenamientoViewState extends State<DetalleEntrenamientoView> {
 
   String _formatFecha(DateTime fecha) =>
       '${fecha.day}/${fecha.month}/${fecha.year}';
+
+  /// Pide confirmación y marca el entrenamiento como completado.
+  Future<void> _marcarComoTerminado() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Marcar como terminado'),
+        content: const Text(
+            '¿Confirmas que has terminado este entrenamiento? Esto lo marcará como completado.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    await context
+        .read<EntrenamientoController>()
+        .actualizarEstado(widget.entrenamientoId, EstadoEntrenamiento.completado);
+
+    if (!mounted) return;
+    setState(() {
+      _entrenamiento = Entrenamiento(
+        id: _entrenamiento!.id,
+        nombre: _entrenamiento!.nombre,
+        descripcion: _entrenamiento!.descripcion,
+        entrenadorId: _entrenamiento!.entrenadorId,
+        atletaId: _entrenamiento!.atletaId,
+        ejerciciosIds: _entrenamiento!.ejerciciosIds,
+        fechaCreacion: _entrenamiento!.fechaCreacion,
+        fechaProgramada: _entrenamiento!.fechaProgramada,
+        estado: EstadoEntrenamiento.completado,
+      );
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Entrenamiento marcado como completado.'),
+        backgroundColor: AppColors.success,
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

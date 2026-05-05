@@ -171,8 +171,8 @@ class _GridEntrenador extends StatelessWidget {
         ),
         _MenuCard(
           icon: Icons.add_box_outlined,
-          label: 'Crear entrenamiento',
-          onTap: () => context.push(AppRoutes.crearEntrenamiento),
+          label: 'Mis plantillas',
+          onTap: () => context.push(AppRoutes.entrenamientos),
         ),
         _MenuCard(
           icon: Icons.bar_chart,

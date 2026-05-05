@@ -190,8 +190,8 @@ class GruposController extends ChangeNotifier {
       );
       await _service.crearSolicitud(solicitud);
       return null;
-    } catch (_) {
-      return 'Error al enviar la solicitud. Inténtalo de nuevo.';
+    } catch (e) {
+      return 'Error al enviar la solicitud: ${e.toString()}';
     }
   }
 

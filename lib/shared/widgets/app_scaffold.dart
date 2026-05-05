@@ -53,6 +53,7 @@ class AppScaffold extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      drawer: canGoBack ? null : const _AppDrawer(),
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
@@ -66,12 +67,12 @@ class AppScaffold extends StatelessWidget {
                 tooltip: 'Volver',
                 onPressed: () => context.pop(),
               )
-            : IconButton(
-                icon: const Icon(Icons.menu),
-                tooltip: 'Menú',
-                onPressed: () {
-                  // TODO: abrir drawer cuando se implemente el menú lateral
-                },
+            : Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.menu),
+                  tooltip: 'Menú',
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+                ),
               ),
 
         // ── Título ───────────────────────────────────────
@@ -93,6 +94,89 @@ class AppScaffold extends StatelessWidget {
       ),
       floatingActionButton: floatingActionButton,
       body: body,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drawer lateral del menú hamburguesa
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AppDrawer extends StatelessWidget {
+  const _AppDrawer();
+
+  @override
+  Widget build(BuildContext context) {
+    final usuario = context.watch<AuthController>().usuario;
+
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(color: AppColors.primary),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.white24,
+                  backgroundImage: usuario?.fotoPerfil != null
+                      ? NetworkImage(usuario!.fotoPerfil!)
+                      : null,
+                  child: usuario?.fotoPerfil == null
+                      ? Text(
+                          usuario?.nombre.isNotEmpty == true
+                              ? usuario!.nombre[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        usuario?.nombre ?? '',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        usuario?.email ?? '',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Cerrar sesión',
+                style: TextStyle(color: Colors.red)),
+            onTap: () async {
+              Navigator.of(context).pop();
+              await context.read<AuthController>().cerrarSesion();
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
     );
   }
 }

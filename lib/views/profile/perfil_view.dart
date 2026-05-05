@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:tfg/controllers/auth_controller.dart';
 import 'package:tfg/core/theme/app_colors.dart';
 import 'package:tfg/core/theme/app_text_styles.dart';
+import 'package:tfg/models/atleta.dart';
 
 class PerfilView extends StatefulWidget {
   const PerfilView({super.key});
@@ -22,12 +23,155 @@ class _PerfilViewState extends State<PerfilView> {
   late TextEditingController _nombreCtrl;
   late TextEditingController _apellidosCtrl;
 
+  /// Datos de atleta del usuario actual (null si aún no se ha cargado).
+  Atleta? _atleta;
+  /// true mientras se carga el documento atleta por primera vez.
+  bool _cargandoAtleta = true;
+  /// Nombre completo del entrenador vinculado (null mientras carga o si no hay).
+  String? _nombreEntrenador;
+
   @override
   void initState() {
     super.initState();
     final usuario = context.read<AuthController>().usuario;
     _nombreCtrl = TextEditingController(text: usuario?.nombre ?? '');
     _apellidosCtrl = TextEditingController(text: usuario?.apellidos ?? '');
+    _cargarAtleta();
+  }
+
+  Future<void> _cargarAtleta() async {
+    final ctrl = context.read<AuthController>();
+    final atleta = await ctrl.obtenerAtletaActual();
+    if (!mounted) return;
+    setState(() {
+      _atleta = atleta;
+      _cargandoAtleta = false;
+    });
+    if (atleta != null && atleta.entrenadorId.isNotEmpty) {
+      final entrenador = await ctrl.obtenerUsuarioPorUid(atleta.entrenadorId);
+      if (!mounted) return;
+      setState(() => _nombreEntrenador = entrenador?.nombreCompleto);
+    }
+  }
+
+  /// Muestra el diálogo para vincular (o cambiar) entrenador.
+  Future<void> _mostrarDialogoVincularEntrenador() async {
+    final tieneEntrenador =
+        _atleta != null && _atleta!.entrenadorId.isNotEmpty;
+
+    if (tieneEntrenador) {
+      final confirmar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cambiar entrenador'),
+          content: Text(
+            'Ya tienes un entrenador asignado'
+            '${_nombreEntrenador != null ? ' ($_nombreEntrenador)' : ''}. '
+            '¿Quieres vincularte a otro entrenador?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Cambiar'),
+            ),
+          ],
+        ),
+      );
+      if (confirmar != true || !mounted) return;
+    }
+
+    final codigoCtrl = TextEditingController();
+    final categoriaCtrl = TextEditingController(
+        text: _atleta?.categoria.isNotEmpty == true ? _atleta!.categoria : 'General');
+    final modalidadCtrl = TextEditingController(
+        text: _atleta?.modalidad.isNotEmpty == true ? _atleta!.modalidad : 'Pistola 10m');
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tieneEntrenador ? 'Cambiar entrenador' : 'Agregar entrenador'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Introduce el código del entrenador (#000001).',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: codigoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Código del entrenador',
+                  hintText: '#000001',
+                ),
+                textCapitalization: TextCapitalization.characters,
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: categoriaCtrl,
+                decoration: const InputDecoration(labelText: 'Categoría'),
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: modalidadCtrl,
+                decoration: const InputDecoration(labelText: 'Modalidad'),
+                textCapitalization: TextCapitalization.sentences,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Vincular'),
+          ),
+        ],
+      ),
+    );
+
+    if (submitted != true || !mounted) return;
+
+    final error = await context.read<AuthController>().vincularEntrenador(
+          codigoEntrenador: codigoCtrl.text,
+          categoria: categoriaCtrl.text.trim().isEmpty ? 'General' : categoriaCtrl.text.trim(),
+          modalidad: modalidadCtrl.text.trim().isEmpty ? 'Pistola 10m' : modalidadCtrl.text.trim(),
+        );
+
+    if (!mounted) return;
+    if (error != null) {
+      final yaVinculado = error.contains('Ya estás vinculado');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error),
+        backgroundColor: yaVinculado ? AppColors.primary : AppColors.error,
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Entrenador vinculado correctamente.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      _cargarAtleta();
+    }
   }
 
   @override
@@ -231,6 +375,55 @@ class _PerfilViewState extends State<PerfilView> {
                         onPressed: isLoading ? null : _guardarCambios,
                         child: const Text('Guardar cambios',
                             style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ],
+
+                  // ── Sección entrenador ──────────────────────────────────
+                  if (!_editando) ...[
+                    const SizedBox(height: 28),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Mi entrenador',
+                          style: AppTextStyles.caption.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          )),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_cargandoAtleta)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_atleta != null && _atleta!.entrenadorId.isNotEmpty)
+                      _InfoTile(
+                        icon: Icons.sports_outlined,
+                        label: 'Entrenador asignado',
+                        value: _nombreEntrenador ?? '…',
+                      )
+                    else
+                      const _InfoTile(
+                        icon: Icons.sports_outlined,
+                        label: 'Entrenador asignado',
+                        value: 'Sin entrenador',
+                      ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _mostrarDialogoVincularEntrenador,
+                        icon: const Icon(Icons.person_add_outlined),
+                        label: Text(
+                          _atleta != null && _atleta!.entrenadorId.isNotEmpty
+                              ? 'Cambiar entrenador'
+                              : 'Agregar entrenador',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
                   ],

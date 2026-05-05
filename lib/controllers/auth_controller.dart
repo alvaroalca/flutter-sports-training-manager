@@ -14,6 +14,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:tfg/models/atleta.dart';
 import 'package:tfg/models/usuario.dart';
 import 'package:tfg/services/auth_service.dart';
 import 'package:tfg/services/firestore_service.dart';
@@ -203,6 +204,45 @@ class AuthController extends ChangeNotifier {
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Devuelve el documento atleta del usuario actual, o null si no existe.
+  Future<Atleta?> obtenerAtletaActual() =>
+      _firestoreService.obtenerAtleta(_usuario!.uid);
+
+  /// Devuelve el usuario con el UID dado, o null si no existe.
+  Future<Usuario?> obtenerUsuarioPorUid(String uid) =>
+      _firestoreService.obtenerUsuario(uid);
+
+  /// Vincula el usuario actual como atleta al entrenador con [codigoEntrenador].
+  ///
+  /// Devuelve null si la operación fue exitosa, o un mensaje de error.
+  Future<String?> vincularEntrenador({
+    required String codigoEntrenador,
+    required String categoria,
+    required String modalidad,
+  }) async {
+    try {
+      final trainer = await _firestoreService
+          .buscarUsuarioPorCodigo(codigoEntrenador.trim().toUpperCase());
+      if (trainer == null) return 'No existe ningún entrenador con ese código.';
+      if (trainer.uid == _usuario!.uid) return 'No puedes vincularte a ti mismo.';
+
+      final atletaActual = await _firestoreService.obtenerAtleta(_usuario!.uid);
+      if (atletaActual != null && atletaActual.entrenadorId == trainer.uid) {
+        return 'Ya estás vinculado con ${trainer.nombreCompleto}.';
+      }
+
+      await _firestoreService.vincularEntrenador(
+        atletaUid: _usuario!.uid,
+        entrenadorId: trainer.uid,
+        categoria: categoria,
+        modalidad: modalidad,
+      );
+      return null;
+    } catch (e) {
+      return 'Error al vincular entrenador: ${e.toString()}';
     }
   }
 

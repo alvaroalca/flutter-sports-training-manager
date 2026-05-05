@@ -105,7 +105,8 @@ service cloud.firestore {
           'entrenadorId',
           'codigoGrupo',
           'fechaCreacion',
-          'miembrosIds'
+          'miembrosIds',
+          'fotoGrupo'
         ])
         && request.resource.data.entrenadorId == resource.data.entrenadorId
         && (

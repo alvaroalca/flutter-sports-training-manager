@@ -61,14 +61,20 @@ class BibliotecaController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Obtener el primer lote de documentos para comprobar si ya hay contenido
-      final snap = await _firestoreService.obtenerRecursos().first;
-      if (snap.isNotEmpty) return; // Ya tiene contenido, no hacer nada
+      // Comparar lo existente con el set esperado: si una siembra previa se
+      // interrumpió, sembrar solo los recursos que falten (idempotente por título).
+      final actuales = await _firestoreService.obtenerRecursos().first;
+      final iniciales = _recursosIniciales();
+      if (actuales.length >= iniciales.length) return;
 
-      // Sembrar los recursos iniciales
-      for (final recurso in _recursosIniciales()) {
+      final titulosExistentes =
+          actuales.map((r) => r.titulo).toSet();
+      for (final recurso in iniciales) {
+        if (titulosExistentes.contains(recurso.titulo)) continue;
         await _firestoreService.crearRecurso(recurso);
       }
+    } catch (_) {
+      // Si falla la siembra (red, permisos), no romper el estado de la app
     } finally {
       _sembrando = false;
       notifyListeners();

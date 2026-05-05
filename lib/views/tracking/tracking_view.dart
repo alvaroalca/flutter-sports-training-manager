@@ -352,21 +352,31 @@ class _BarraProgreso extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(
-        ejercicio.numDisparos,
-        (i) => Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: i < ctrl.disparoActual - 1
-                ? AppColors.success
-                : i == ctrl.disparoActual - 1
-                    ? AppColors.primary
-                    : Colors.grey.shade300,
+    // Tamaño y espaciado se reducen cuando hay muchos disparos para que quepan
+    // varias filas sin saturar la pantalla (p.ej. ejercicios de 50 disparos/serie).
+    final muchos = ejercicio.numDisparos > 20;
+    final size = muchos ? 10.0 : 16.0;
+    final spacing = muchos ? 4.0 : 8.0;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: spacing,
+        runSpacing: spacing,
+        children: List.generate(
+          ejercicio.numDisparos,
+          (i) => Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i < ctrl.disparoActual - 1
+                  ? AppColors.success
+                  : i == ctrl.disparoActual - 1
+                      ? AppColors.primary
+                      : Colors.grey.shade300,
+            ),
           ),
         ),
       ),
