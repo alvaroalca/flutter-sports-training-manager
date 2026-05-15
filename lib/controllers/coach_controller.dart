@@ -47,8 +47,14 @@ class CoachController extends ChangeNotifier {
   /// Stream con el historial de resultados de un atleta, ordenados por fecha.
   ///
   /// Permite al entrenador ver la evolución del atleta en tiempo real.
-  Stream<List<Resultado>> resultadosPorAtleta(String atletaId) =>
-      _firestoreService.resultadosPorAtleta(atletaId);
+  Stream<List<Resultado>> resultadosPorAtleta({
+    required String entrenadorId,
+    required String atletaId,
+  }) =>
+      _firestoreService.resultadosPorAtleta(
+        entrenadorId: entrenadorId,
+        atletaId: atletaId,
+      );
 
   // ─────────────────────────────────────────────
   // OPERACIONES ASÍNCRONAS

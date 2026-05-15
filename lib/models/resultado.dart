@@ -68,6 +68,9 @@ class Resultado {
   /// UID del atleta que realizó el ejercicio.
   final String atletaId;
 
+  /// UID del entrenador responsable del entrenamiento registrado.
+  final String entrenadorId;
+
   /// ID del ejercicio ejecutado.
   final String ejercicioId;
 
@@ -87,6 +90,7 @@ class Resultado {
     required this.id,
     required this.entrenamientoId,
     required this.atletaId,
+    required this.entrenadorId,
     required this.ejercicioId,
     required this.fecha,
     required this.series,
@@ -114,6 +118,7 @@ class Resultado {
       id: id,
       entrenamientoId: map['entrenamientoId'] ?? '',
       atletaId: map['atletaId'] ?? '',
+      entrenadorId: map['entrenadorId'] ?? '',
       ejercicioId: map['ejercicioId'] ?? '',
       fecha: (map['fecha'] as Timestamp).toDate(),
       series: (map['series'] as List)
@@ -129,6 +134,7 @@ class Resultado {
     return {
       'entrenamientoId': entrenamientoId,
       'atletaId': atletaId,
+      'entrenadorId': entrenadorId,
       'ejercicioId': ejercicioId,
       'fecha': Timestamp.fromDate(fecha),
       'series': series.map((s) => s.toMap()).toList(),

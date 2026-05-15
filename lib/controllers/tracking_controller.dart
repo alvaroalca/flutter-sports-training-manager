@@ -68,6 +68,7 @@ class TrackingController extends ChangeNotifier {
 
   // ── Contexto de sesión ─────────────────────────
   String? _atletaId;
+  String? _entrenadorId;
   String? _entrenamientoId;
   String? _ejercicioId;
 
@@ -92,11 +93,13 @@ class TrackingController extends ChangeNotifier {
   void cargarEjercicio({
     required Ejercicio ejercicio,
     required String atletaId,
+    required String entrenadorId,
     required String entrenamientoId,
   }) {
     _cancelarTimer();
     _ejercicio = ejercicio;
     _atletaId = atletaId;
+    _entrenadorId = entrenadorId;
     _entrenamientoId = entrenamientoId;
     _ejercicioId = ejercicio.id;
     _fase = FaseEjercicio.idle;
@@ -170,6 +173,7 @@ class TrackingController extends ChangeNotifier {
         id: '',
         entrenamientoId: _entrenamientoId!,
         atletaId: _atletaId!,
+        entrenadorId: _entrenadorId!,
         ejercicioId: _ejercicioId!,
         fecha: DateTime.now(),
         series: List.from(_seriesCompletadas),

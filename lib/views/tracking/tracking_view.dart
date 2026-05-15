@@ -63,6 +63,7 @@ class _TrackingViewState extends State<TrackingView> {
           context.read<TrackingController>().cargarEjercicio(
                 ejercicio: ejs[0],
                 atletaId: context.read<AuthController>().usuario!.uid,
+                entrenadorId: ent.entrenadorId,
                 entrenamientoId: widget.entrenamientoId,
               );
         }
@@ -81,6 +82,7 @@ class _TrackingViewState extends State<TrackingView> {
     context.read<TrackingController>().cargarEjercicio(
           ejercicio: _ejercicios[siguiente],
           atletaId: context.read<AuthController>().usuario!.uid,
+          entrenadorId: _entrenamiento!.entrenadorId,
           entrenamientoId: widget.entrenamientoId,
         );
   }
@@ -128,7 +130,28 @@ class _TrackingViewState extends State<TrackingView> {
           ejercicio: ejercicio,
           numeroEjercicio: _ejercicioIndex + 1,
           totalEjercicios: _ejercicios.length,
-          onIniciar: ctrl.iniciar,
+          onIniciar: () {
+            if (_entrenamiento?.estado == EstadoEntrenamiento.pendiente) {
+              context.read<EntrenamientoController>().actualizarEstado(
+                    widget.entrenamientoId,
+                    EstadoEntrenamiento.enProgreso,
+                  );
+              setState(() {
+                _entrenamiento = Entrenamiento(
+                  id: _entrenamiento!.id,
+                  nombre: _entrenamiento!.nombre,
+                  descripcion: _entrenamiento!.descripcion,
+                  entrenadorId: _entrenamiento!.entrenadorId,
+                  atletaId: _entrenamiento!.atletaId,
+                  ejerciciosIds: _entrenamiento!.ejerciciosIds,
+                  fechaCreacion: _entrenamiento!.fechaCreacion,
+                  fechaProgramada: _entrenamiento!.fechaProgramada,
+                  estado: EstadoEntrenamiento.enProgreso,
+                );
+              });
+            }
+            ctrl.iniciar();
+          },
         ),
       FaseEjercicio.preparacion || FaseEjercicio.apuntado => _PantallaTemporizador(
           ctrl: ctrl,
@@ -515,14 +538,51 @@ class _PantallaCompletadoState extends State<_PantallaCompletado> {
     super.dispose();
   }
 
-  Future<void> _guardar() async {
+  Future<bool> _guardar() async {
     final id = await widget.ctrl.guardarResultado(
       observacionesAtleta:
           _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
     );
     if (id != null && mounted) {
       setState(() => _guardado = true);
+      if (!widget.hayMasEjercicios) {
+        await context
+            .read<EntrenamientoController>()
+            .actualizarEstado(
+              widget.entrenamientoId,
+              EstadoEntrenamiento.completado,
+            );
+      }
+      return true;
     }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.ctrl.errorMessage ??
+                'No se pudo guardar el resultado. Revisa la conexión.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+    return false;
+  }
+
+  Future<void> _guardarYContinuar() async {
+    if (!_guardado) {
+      final guardado = await _guardar();
+      if (!guardado || !mounted) return;
+    }
+    widget.onSiguienteEjercicio();
+  }
+
+  Future<void> _guardarYVolver() async {
+    if (!_guardado) {
+      final guardado = await _guardar();
+      if (!guardado || !mounted) return;
+    }
+    if (mounted) context.pop();
   }
 
   @override
@@ -619,15 +679,19 @@ class _PantallaCompletadoState extends State<_PantallaCompletado> {
           // ── Navegación ─────────────────────────────
           if (widget.hayMasEjercicios)
             OutlinedButton.icon(
-              onPressed: widget.onSiguienteEjercicio,
+              onPressed: widget.ctrl.guardando ? null : _guardarYContinuar,
               icon: const Icon(Icons.arrow_forward, color: AppColors.primary),
-              label: const Text('Siguiente ejercicio',
-                  style: TextStyle(color: AppColors.primary)),
+              label: Text(
+                _guardado ? 'Siguiente ejercicio' : 'Guardar y seguir',
+                style: const TextStyle(color: AppColors.primary),
+              ),
             ),
           const SizedBox(height: 8),
           TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('Volver al entrenamiento'),
+            onPressed: widget.ctrl.guardando ? null : _guardarYVolver,
+            child: Text(
+              _guardado ? 'Volver al entrenamiento' : 'Guardar y volver',
+            ),
           ),
         ],
       ),

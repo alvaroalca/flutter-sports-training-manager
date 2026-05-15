@@ -174,13 +174,28 @@ class _CuerpoAtleta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Resultado>>(
-      stream:
-          context.read<CoachController>().resultadosPorAtleta(atletaId),
+      stream: context.read<CoachController>().resultadosPorAtleta(
+            entrenadorId: perfil.atleta.entrenadorId,
+            atletaId: atletaId,
+          ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.all(32),
             child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(
+              child: Text(
+                'No se pudieron cargar los resultados del atleta.',
+                style: TextStyle(color: AppColors.error),
+                textAlign: TextAlign.center,
+              ),
+            ),
           );
         }
 

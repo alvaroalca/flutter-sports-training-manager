@@ -288,15 +288,22 @@ class FirestoreService {
   /// Stream con todos los resultados de un atleta, ordenados por fecha descendente.
   ///
   /// Permite al entrenador visualizar la evolución del atleta en tiempo real.
-  Stream<List<Resultado>> resultadosPorAtleta(String atletaId) {
+  Stream<List<Resultado>> resultadosPorAtleta({
+    required String entrenadorId,
+    required String atletaId,
+  }) {
     return _db
         .collection('resultados')
-        .where('atletaId', isEqualTo: atletaId)
-        .orderBy('fecha', descending: true)
+        .where('entrenadorId', isEqualTo: entrenadorId)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => Resultado.fromMap(d.data(), d.id))
-            .toList());
+        .map((snap) {
+      final lista = snap.docs
+          .map((d) => Resultado.fromMap(d.data(), d.id))
+          .where((r) => r.atletaId == atletaId)
+          .toList();
+      lista.sort((a, b) => b.fecha.compareTo(a.fecha));
+      return lista;
+    });
   }
 
   // ─────────────────────────────────────────────

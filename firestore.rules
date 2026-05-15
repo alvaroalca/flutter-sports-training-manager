@@ -243,6 +243,7 @@ service cloud.firestore {
       allow read: if signedIn()
         && (
           resource.data.atletaId == request.auth.uid
+          || resource.data.entrenadorId == request.auth.uid
           || (
             exists(/databases/$(database)/documents/atletas/$(resource.data.atletaId))
             && get(/databases/$(database)/documents/atletas/$(resource.data.atletaId)).data.entrenadorId == request.auth.uid
@@ -251,12 +252,15 @@ service cloud.firestore {
 
       // Crear: solo el atleta que registra el resultado
       allow create: if signedIn()
-        && request.resource.data.atletaId == request.auth.uid;
+        && request.resource.data.atletaId == request.auth.uid
+        && exists(/databases/$(database)/documents/entrenamientos/$(request.resource.data.entrenamientoId))
+        && get(/databases/$(database)/documents/entrenamientos/$(request.resource.data.entrenamientoId)).data.entrenadorId == request.resource.data.entrenadorId;
 
       // Update: atleta o entrenador (para observaciones).
       allow update: if signedIn()
         && (
           request.auth.uid == resource.data.atletaId
+          || request.auth.uid == resource.data.entrenadorId
           || (
             exists(/databases/$(database)/documents/atletas/$(resource.data.atletaId))
             && get(/databases/$(database)/documents/atletas/$(resource.data.atletaId)).data.entrenadorId == request.auth.uid
