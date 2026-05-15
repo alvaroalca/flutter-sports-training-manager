@@ -15,6 +15,12 @@ La aplicación cubre todo el flujo: el entrenador diseña sesiones con ejercicio
 
 ---
 
+## Vídeo de presentación
+
+Presentación del Trabajo de Fin de Ciclo disponible en YouTube: [ver vídeo](https://youtu.be/lxZENzaq6Tc).
+
+---
+
 ## Funcionalidades
 
 ### Portal atleta
@@ -144,7 +150,7 @@ Estructura plana (colecciones en raíz) para facilitar consultas y evitar límit
 | `atletas` | `uid` (= usuarios), `entrenadorId`, `categoria`, `modalidad`, `licenciaFederativa`, `fechaVinculacion` |
 | `entrenamientos` | `nombre`, `entrenadorId`, `atletaId` (null = plantilla), `ejerciciosIds[]`, `estado`, `fechaProgramada` |
 | `ejercicios` | `nombre`, `tiempoPreparacion`, `tiempoApuntado`, `numDisparos`, `repeticiones` |
-| `resultados` | `atletaId`, `entrenamientoId`, `series[]` → `disparos[]`, `observacionesAtleta`, `observacionesEntrenador` |
+| `resultados` | `atletaId`, `entrenadorId`, `entrenamientoId`, `series[]` → `disparos[]`, `observacionesAtleta`, `observacionesEntrenador` |
 | `recursos` | `titulo`, `resumen`, `contenido`, `categoria`, `autor`, `fechaPublicacion` |
 | `grupos` | `nombre`, `entrenadorId`, `codigoGrupo`, `miembrosIds[]`, `fotoGrupo` |
 | `solicitudes` | `grupoId`, `atletaId`, `estado` (pendiente/aprobada/rechazada), `fechaSolicitud` |
